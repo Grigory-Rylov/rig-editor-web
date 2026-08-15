@@ -10,25 +10,32 @@
 
 Требования: Node.js 18+.
 
-```bash
-npm install          # зависимости
+1. Клонировать репозиторий и перейти в него:
 
-# dev-режим (Vite, HMR) — http://localhost:5173/
-npm run dev
+   ```bash
+   git clone https://github.com/Grigory-Rylov/pc_editor_web.git
+   cd pc_editor_web
+   ```
 
-# dev на другом порту, например 8888
-npx vite --port 8888 --host
+2. Установить зависимости:
 
-# production: сборка в dist/ и предпросмотр
-npm run build
-npx vite preview --port 8888 --host
-```
+   ```bash
+   npm install
+   ```
 
-Тесты парсера DSL (не нужны для запуска, проверяют корректность):
+3. Запустить:
 
-```bash
-npx tsx test_dsl.ts
-```
+   ```bash
+   # dev-режим (Vite, HMR) — http://localhost:5173/
+   npm run dev
+
+   # dev на другом порту, например 8888
+   npx vite --port 8888 --host
+
+   # production: сборка в dist/ и предпросмотр
+   npm run build
+   npx vite preview --port 8888 --host
+   ```
 
 ## Как пользоваться
 
@@ -158,5 +165,4 @@ src/components.ts геометрия рамки и компонентов (CSG v
 src/scene.ts      сборка мешей сцены из SceneConfig
 public/textures/  текстуры материнской платы (из csg_pc_editor)
 docs/screenshot.jpg скриншот приложения (в этом README)
-test_dsl.ts       тесты парсера (npx tsx test_dsl.ts)
 ```
