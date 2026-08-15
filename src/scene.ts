@@ -37,6 +37,35 @@ function colorize(geo: THREE.BufferGeometry, color: THREE.Color): THREE.BufferGe
   return geo;
 }
 
+// Текстуры материнской платы — те же файлы, что в Android-приложении (assets/motherboard*.png)
+let mbTextures: { top: THREE.Texture; bottom: THREE.Texture } | null = null;
+function getMbTextures() {
+  if (!mbTextures) {
+    const loader = new THREE.TextureLoader();
+    const base = import.meta.env.BASE_URL + 'textures/';
+    const load = (f: string) => {
+      const t = loader.load(base + f);
+      t.colorSpace = THREE.SRGBColorSpace;
+      return t;
+    };
+    mbTextures = { top: load('motherboard.png'), bottom: load('motherboard_down.png') };
+  }
+  return mbTextures;
+}
+
+// Текстурированные грани верха/низа платы (как в MultipleObjectsRenderer.java)
+function buildMbTexturePlanes(): THREE.Mesh[] {
+  const { top, bottom } = getMbTextures();
+  const W = 305, D = 205.8; // размер платы из components.ts
+  const mk = (tex: THREE.Texture, z: number) => {
+    const g = new THREE.PlaneGeometry(W, D);
+    if (z < 0) g.rotateX(Math.PI); // нижняя грань смотрит вниз
+    g.translate(0, 0, z);
+    return new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: tex, side: THREE.DoubleSide }));
+  };
+  return [mk(top, 0.9), mk(bottom, -0.9)];
+}
+
 export function buildFrameMeshes(config: SceneConfig): THREE.Mesh[] {
   const meshes: THREE.Mesh[] = [];
 
@@ -88,6 +117,7 @@ export function buildComponentMeshes(config: SceneConfig): MovableComponent[] {
     }
 
     mesh.position.set(tx, ty, tz);
+    if (cp.type === 'motherboard') for (const p of buildMbTexturePlanes()) mesh.add(p);
     group.add(mesh);
 
     components.push({ group, placement: cp, baseGeo: geo });
