@@ -166,3 +166,7 @@ src/scene.ts      сборка мешей сцены из SceneConfig
 public/textures/  текстуры материнской платы (из csg_pc_editor)
 docs/screenshot.jpg скриншот приложения (в этом README)
 ```
+
+## Лицензия
+
+MIT — см. [LICENSE](LICENSE).
