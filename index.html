@@ -19,13 +19,27 @@
       background: #181825; border-bottom: 1px solid #313244;
       display: flex; justify-content: space-between; align-items: center;
     }
-    #dsl-editor {
-      flex: 1; width: 100%; background: #1e1e2e; color: #cdd6f4;
-      border: none; padding: 12px 16px; font-family: 'JetBrains Mono', 'Fira Code', monospace;
-      font-size: 13px; line-height: 1.6; resize: none; outline: none;
-      tab-size: 2;
+    #editor-wrap { flex: 1; position: relative; overflow: hidden; background: #1e1e2e; }
+    #hl-layer, #dsl-editor {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      border: none; padding: 12px 16px; margin: 0;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: 13px; line-height: 1.6; tab-size: 2; letter-spacing: normal;
+      white-space: pre; overflow: auto;
     }
-    #dsl-editor::selection { background: #585b70; }
+    #hl-layer { pointer-events: none; z-index: 0; color: #cdd6f4; }
+    #hl-layer .c { color: #7a8194; font-style: italic; }   /* комментарии */
+    #hl-layer .n { color: #fab387; }                        /* числа */
+    #hl-layer .k { color: #cba6f7; font-weight: 600; }      /* ключевые слова */
+    #hl-layer .p { color: #89b4fa; }                        /* имена параметров */
+    #hl-layer .f { color: #a6e3a1; }                        /* компоненты */
+    #hl-layer .o { color: #9399b2; }                        /* знаки (){}= */
+    #hl-layer .e { color: #f38ba8; text-decoration: underline; } /* неизвестные символы */
+    #dsl-editor {
+      background: transparent; color: transparent; caret-color: #cdd6f4;
+      resize: none; outline: none; z-index: 1;
+    }
+    #dsl-editor::selection { background: rgba(88, 91, 112, 0.55); }
     #panel-footer {
       padding: 8px 16px; background: #181825; border-top: 1px solid #313244;
       display: flex; gap: 8px; flex-wrap: wrap;
@@ -87,7 +101,10 @@
         <span>Конфигурация (DSL)</span>
         <span style="font-size:11px;color:#6c7086;">Ctrl+Enter — применить</span>
       </div>
-      <textarea id="dsl-editor" spellcheck="false"></textarea>
+      <div id="editor-wrap">
+        <pre id="hl-layer" aria-hidden="true"><code></code></pre>
+        <textarea id="dsl-editor" wrap="off" spellcheck="false"></textarea>
+      </div>
       <div id="error-box"></div>
       <div id="panel-footer">
         <button class="btn" id="btn-apply">Применить</button>

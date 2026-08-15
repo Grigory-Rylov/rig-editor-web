@@ -38,9 +38,46 @@ const panStart = new THREE.Vector2();
 const panEnd = new THREE.Vector2();
 let isPanning = false;
 
+// ---- Syntax Highlighting ----
+const hlCode = document.querySelector('#hl-layer code')!;
+const hlLayer = document.getElementById('hl-layer')! as HTMLPreElement;
+
+const HL_KEYWORDS = new Set(['frame', 'bottomEdge', 'move', 'rotate']);
+const HL_RE = /#[^\n]*|\/\/[^\n]*|-?\d+(?:\.\d+)?|[A-Za-z_][A-Za-z0-9_]*|\s+|./gs;
+
+function esc(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function updateHighlight() {
+  const src = editor.value;
+  let out = '';
+  HL_RE.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = HL_RE.exec(src))) {
+    const t = m[0];
+    if (t === '#' || t.startsWith('//')) out += `<span class="c">${esc(t)}</span>`;
+    else if (/^-?\d/.test(t)) out += `<span class="n">${t}</span>`;
+    else if (/^[A-Za-z_]/.test(t)) {
+      const cls = HL_KEYWORDS.has(t) ? 'k' : /^\s*=(?!=)/.test(src.slice(HL_RE.lastIndex)) ? 'p' : 'f';
+      out += `<span class="${cls}">${t}</span>`;
+    } else if ('(){}='.includes(t)) out += `<span class="o">${esc(t)}</span>`;
+    else if (!/^\s/.test(t)) out += `<span class="e">${esc(t)}</span>`;
+    else out += esc(t);
+  }
+  hlCode.innerHTML = out + (src.endsWith('\n') ? '\n' : '');
+}
+
+editor.addEventListener('input', updateHighlight);
+editor.addEventListener('scroll', () => {
+  hlLayer.scrollTop = editor.scrollTop;
+  hlLayer.scrollLeft = editor.scrollLeft;
+});
+
 // ---- Init ----
 setupLights();
 editor.value = DEFAULT_SCRIPT;
+updateHighlight();
 loadScene(DEFAULT_SCRIPT);
 
 window.addEventListener('resize', resize);
@@ -121,6 +158,7 @@ btnResetFrame.addEventListener('click', () => {
   if (f.levels.length) line += ` l=${f.levels.join(' ')}`;
   line += ')';
   editor.value = editor.value.replace(m[0], line);
+  updateHighlight();
   loadScene(editor.value);
 });
 
