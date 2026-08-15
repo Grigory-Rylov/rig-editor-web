@@ -75,12 +75,16 @@ export function buildFrameHorizontal(
 
 // ---- Motherboard ----
 export function buildMotherboard(): THREE.BufferGeometry {
+  // Tyan S8030 single-socket SP3 ATX (305×205.8) — отверстия 1-в-1 с pccase/Motherboard.kt:
   let r = cube(305, 205.8, 1.6);
-  for (const [hx, hy] of [
-    [-100, 93], [100, 93], [0, 93],
-    [-100, -93], [100, -93], [0, -93],
-    [-120, -20], [-80, -20],
-  ]) {
+  const screwPositions: [number, number][] = [
+    // Rear I/O area (Y+ edge)
+    [-138, 92.5], [146, 76], [-14, 93],
+    // Front edge / PCIe area (Y- edge)
+    [-138, -93], [-138, -34], [146, -93],
+    [-14, -93], [-14, -34],
+  ];
+  for (const [hx, hy] of screwPositions) {
     r = csgSubtract(r, cyl(1.5, 10, 8).rotateX(Math.PI / 2).translate(hx, hy, 0));
   }
   return r;
