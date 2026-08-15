@@ -26,7 +26,8 @@ container.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x404040); // как в Android-приложении (glClearColor 0.25,0.25,0.25)
 
-const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 10000);
+// near=2 (мм): сцena в мм — слишком малый near даёт z-fighting на близких поверхностях
+const camera = new THREE.PerspectiveCamera(45, 1, 2, 10000);
 camera.up.set(0, 0, 1);
 camera.position.set(0, -600, 600);
 

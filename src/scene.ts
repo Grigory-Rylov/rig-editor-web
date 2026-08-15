@@ -63,7 +63,7 @@ function buildMbTexturePlanes(): THREE.Mesh[] {
     g.translate(0, 0, z);
     return new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: tex, side: THREE.DoubleSide }));
   };
-  return [mk(top, 0.9), mk(bottom, -0.9)];
+  return [mk(top, 1.2), mk(bottom, -1.2)];
 }
 
 export function buildFrameMeshes(config: SceneConfig): THREE.Mesh[] {
