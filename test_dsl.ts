@@ -95,6 +95,61 @@ assert(rad3.type === 'radiator', '7: radiator');
 assert(rad3.transforms.length === 2, '7: 2 tx');
 assert(rad3.transforms[1].kind === 'move' && rad3.transforms[1].x === -200, '7: t1.x=-200');
 
+const userScript2 = `# PC Case Configuration
+frame (w=540 d=340 h=400 l=170) {
+ bottomEdge (x=-40)
+ bottomEdge (x=100)
+  bottomEdge (x=-100)
+}
+move(114 30 20.8) motherboard()
+move(-120 0 270) gpu (n=5 s=55)
+move(x=-170 z=80) {
+  move(y=75) rotate(90 0 0) psu()
+  move(y=-75) rotate(90 0 0) psu()
+}
+move(150 35 105) cooler()
+move(0 0 420) {
+ radiator()
+ move(x=200) radiator ()
+}`;
+
+console.log('=== User script #2 ===');
+{
+  const cfg = parseScript(userScript2);
+  assert(cfg.frame.w === 540 && cfg.frame.d === 340 && cfg.frame.h === 400, 'frame 540/340/400');
+  assert(JSON.stringify(cfg.frame.levels) === '[170]', 'levels=[170]');
+  assert(JSON.stringify(cfg.frame.bottomBeams) === '[-40,100,-100]', 'bottomBeams=[-40,100,-100]');
+  assert(cfg.components.length === 7, `total=7 (got ${cfg.components.length})`);
+
+  const [mb, gpu, psu1, psu2, cooler, rad1, rad2] = cfg.components;
+  assert(mb.type === 'motherboard', '0: motherboard');
+  assert((mb.transforms[0] as any).x === 114 && (mb.transforms[0] as any).y === 30 && (mb.transforms[0] as any).z === 20.8, '0: move(114 30 20.8)');
+
+  assert(gpu.type === 'gpu' && gpu.count === 5 && gpu.spacing === 55, '1: gpu n=5 s=55');
+  assert((gpu.transforms[0] as any).x === -120 && (gpu.transforms[0] as any).z === 270, '1: move(-120 0 270)');
+
+  let pi = 2;
+  for (const [psu, yExp] of [[psu1, 75], [psu2, -75]] as const) {
+    assert(psu.type === 'psu', `${pi}: psu`);
+    assert(psu.transforms.length === 3, `${pi}: 3 tx`);
+    assert((psu.transforms[0] as any).x === -170 && (psu.transforms[0] as any).z === 80, `${pi}: outer move(x=-170 z=80)`);
+    assert((psu.transforms[1] as any).y === yExp, `${pi}: inner y=${yExp}`);
+    assert(psu.transforms[2].kind === 'rotate' && (psu.transforms[2] as any).x === 90, `${pi}: rotate(90)`);
+    pi++;
+  }
+
+  assert(cooler.type === 'cooler', '4: cooler');
+  assert((cooler.transforms[0] as any).x === 150 && (cooler.transforms[0] as any).y === 35 && (cooler.transforms[0] as any).z === 105, '4: move(150 35 105)');
+
+  assert(rad1.type === 'radiator', '5: radiator');
+  assert(rad1.transforms.length === 1 && (rad1.transforms[0] as any).z === 420, '5: move(0 0 420) only');
+
+  assert(rad2.type === 'radiator', '6: radiator');
+  assert(rad2.transforms.length === 2, '6: 2 tx');
+  assert((rad2.transforms[0] as any).z === 420, '6: outer z=420');
+  assert((rad2.transforms[1] as any).x === 200, '6: inner x=200');
+}
+
 function assertThrows(fn: () => void, msg: string) {
   try { fn(); console.error('  FAIL', msg, '(no throw)'); fail++; }
   catch (e) { console.log('  OK', msg); pass++; }
