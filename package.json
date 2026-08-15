@@ -1,0 +1,19 @@
+{
+  "name": "pc-viewer-3d",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "three": "^0.172.0",
+    "three-csg-ts": "^3.2.0"
+  },
+  "devDependencies": {
+    "vite": "^6.0.0",
+    "typescript": "^5.7.0",
+    "@types/three": "^0.172.0"
+  }
+}
