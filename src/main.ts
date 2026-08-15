@@ -12,6 +12,12 @@ const btnApply = document.getElementById('btn-apply')!;
 const btnResetFrame = document.getElementById('btn-reset-frame')!;
 const btnReport = document.getElementById('btn-report')!;
 
+// Любой рантайм-ошибка видна в интерфейсе, а не как пустой экран
+window.addEventListener('error', (e) => {
+  errorBox.textContent = `Ошибка: ${e.message}`;
+  errorBox.style.display = 'block';
+});
+
 // ---- Three.js ----
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(window.devicePixelRatio);
@@ -82,6 +88,15 @@ function saveScript(script: string) {
   try { localStorage.setItem(STORAGE_KEY, script); } catch { /* приватный режим — просто не сохраняем */ }
 }
 
+// Ключевой свет идёт со стороны камеры и чуть выше неё — как будто светит в лицо сцене
+const keyLight = new THREE.DirectionalLight(0xffffff, 1.15);
+scene.add(keyLight);
+const LIGHT_ABOVE_CAMERA = new THREE.Vector3(0, 0, 350); // +Z — вертикаль сцены
+
+function syncLightToCamera() {
+  keyLight.position.copy(camera.position).add(LIGHT_ABOVE_CAMERA);
+}
+
 // ---- Init ----
 scene.add(new THREE.AmbientLight(0xffffff, 0.45));
 syncLightToCamera();
@@ -97,15 +112,6 @@ function resize() {
   camera.aspect = r.width / r.height;
   camera.updateProjectionMatrix();
   renderer.setSize(r.width, r.height);
-}
-
-// Ключевой свет идёт со стороны камеры и чуть выше неё — как будто светит в лицо сцене
-const keyLight = new THREE.DirectionalLight(0xffffff, 1.15);
-scene.add(keyLight);
-const LIGHT_ABOVE_CAMERA = new THREE.Vector3(0, 0, 350); // +Z — вертикаль сцены
-
-function syncLightToCamera() {
-  keyLight.position.copy(camera.position).add(LIGHT_ABOVE_CAMERA);
 }
 
 // ---- Scene Building ----
