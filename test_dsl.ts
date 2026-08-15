@@ -220,16 +220,17 @@ console.log('=== Edge beams ===');
 }
 
 console.log('=== Parity with csg_pc_editor ===');
+assertThrows(() => parseScript('frame(w=530 d=330 h=350 b=140)'), 'b= in frame -> error (use bottomEdge)');
 {
-  const cfg2 = parseScript(`frame(w=530 d=330 h=350 b=200)\nbottomEdge(x=-46)`);
-  assert(JSON.stringify(cfg2.frame.bottomBeams) === '[200,-46]', 'top-level bottomEdge appended after b param');
+  const cfg2 = parseScript(`frame(w=530 d=330 h=350)\nbottomEdge(x=-46)`);
+  assert(JSON.stringify(cfg2.frame.bottomBeams) === '[-46]', 'top-level bottomEdge collected');
 }
 {
   const cfg3 = parseScript(`frame(w=530 d=330 h=350)\nmove(1 2 3) {\n motherboard()\n bottomEdge(x=-77)\n}`);
   assert(JSON.stringify(cfg3.frame.bottomBeams) === '[-77]', 'bottomEdge inside transform block kept');
 }
 assertThrows(() => parseScript(`frame(w=530 d=330 h=350)\nmove(1 2 3) {\n frame(w=1 d=1 h=1)\n motherboard()\n}`), 'frame inside block -> error');
-assertThrows(() => parseScript('frame(w=530 d=330 h=350 b=140,)'), 'unknown character -> error');
+assertThrows(() => parseScript('frame(w=530 d=330 h=350 x=1,)'), 'unexpected comma after params -> error');
 assertThrows(() => parseScript(`frame(w=530 d=330 h=350)\nmove( x = ) motherboard()`), "missing value after '=' -> error");
 
 console.log(`\n${pass} OK, ${fail} FAIL`);

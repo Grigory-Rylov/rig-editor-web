@@ -101,7 +101,8 @@ class Parser {
     const params = this.namedParams();
     this.expect('OP', ')');
     if (params['l'] != null) throw new Error("Параметр l= frame() больше не поддерживается — используйте frontEdge/backEdge/leftEdge/rightEdge");
-    const bottomBeams: number[] = [...(paramList(params, 'b'))];
+    if (params['b'] != null) throw new Error("Параметр b= frame() больше не поддерживается — используйте bottomEdge(x=...)");
+    const bottomBeams: number[] = [];
     const edges: EdgeBeam[] = [];
 
     if (this.cur().kind === 'OP' && this.cur().val === '{') {
@@ -197,7 +198,6 @@ class Parser {
 function paramReq(p: Record<string, string>, k: string) { const v = p[k]; if (v == null) throw new Error(`Отсутствует параметр '${k}'`); return parseFloat(v); }
 function paramOptN(p: Record<string, string>, k: string, d: number) { const v = p[k]; return v != null ? parseFloat(v) : d; }
 function paramOptI(p: Record<string, string>, k: string, d: number) { const v = p[k]; return v != null ? parseInt(v) : d; }
-function paramList(p: Record<string, string>, k: string): number[] { const v = p[k]; return v ? v.split(/[\s,]+/).map(Number) : []; }
 
 // ---- Interpret AST → SceneConfig ----
 export function parseScript(text: string): SceneConfig {

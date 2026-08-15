@@ -152,6 +152,7 @@ function loadScene(script: string) {
 // ---- UI ----
 btnApply.addEventListener('click', () => loadScene(editor.value));
 editor.addEventListener('keydown', (e) => {
+  if (e.key === 'Tab') { e.preventDefault(); document.execCommand('insertText', false, '  '); return; }
   if (e.ctrlKey && e.key === 'Enter') { e.preventDefault(); loadScene(editor.value); }
 });
 
