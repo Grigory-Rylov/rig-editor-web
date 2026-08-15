@@ -154,9 +154,7 @@ btnResetFrame.addEventListener('click', () => {
     return;
   }
   const f = DEFAULT_FRAME;
-  let line = `frame(w=${f.w} d=${f.d} h=${f.h}`;
-  if (f.levels.length) line += ` l=${f.levels.join(' ')}`;
-  line += ')';
+  const line = `frame(w=${f.w} d=${f.d} h=${f.h})`;
   editor.value = editor.value.replace(m[0], line);
   updateHighlight();
   loadScene(editor.value);

@@ -9,8 +9,9 @@ export interface ProfileCut {
   axis: ProfileAxis;
 }
 
-// Тот же набор балок, что и в PcFrame.kt (csg_pc_editor):
-// 4 стойки по Z + слои (низ, верх, уровни) 2xX + 2xY + нижние балки bottomBeams по Y
+// Тот же набор балок, что в components.ts resolveFrameBeams():
+// 4 стойки по Z + слои (низ, верх) 2xX + 2xY + нижние балки bottomBeams по Y
+// + front/backEdge вдоль X + left/rightEdge вдоль Y
 export function computeProfileCuts(frame: FrameConfig): ProfileCut[] {
   const p = PROFILE_SIZE;
   const bw = frame.w - 2 * p;
@@ -25,8 +26,11 @@ export function computeProfileCuts(frame: FrameConfig): ProfileCut[] {
   };
   layer(); // низ (z = p/2)
   layer(); // верх (z = h - p/2)
-  for (const _level of frame.levels) layer();
   for (const _bx of frame.bottomBeams) cuts.push({ length: bd, axis: 'Y' });
+  for (const e of frame.edges) {
+    if (e.side === 'front' || e.side === 'back') cuts.push({ length: e.length ?? bw, axis: 'X' });
+    else cuts.push({ length: bd, axis: 'Y' });
+  }
 
   return cuts;
 }

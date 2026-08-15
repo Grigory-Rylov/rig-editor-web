@@ -1,7 +1,9 @@
 import { parseScript } from './src/dsl';
+import { resolveFrameBeams } from './src/components';
+import { computeProfileCuts } from './src/profiles';
 
 const userScript = `# PC Case Configuration
-frame(w=530 d=330 h=350 l=190) {
+frame(w=530 d=330 h=350) {
     bottomEdge(x=-200)
     bottomEdge(x=-120)
 
@@ -35,7 +37,7 @@ console.log('=== Frame ===');
 assert(cfg.frame.w === 530, 'w=530');
 assert(cfg.frame.d === 330, 'd=330');
 assert(cfg.frame.h === 350, 'h=350');
-assert(cfg.frame.levels.length === 1 && cfg.frame.levels[0] === 190, 'levels=[190]');
+assert(cfg.frame.edges.length === 0, 'no edges');
 assert(cfg.frame.bottomBeams.length === 4, 'bottomBeams=4');
 assert(cfg.frame.bottomBeams[0] === -200, 'bb[0]=-200');
 assert(cfg.frame.bottomBeams[1] === -120, 'bb[1]=-120');
@@ -96,10 +98,14 @@ assert(rad3.transforms.length === 2, '7: 2 tx');
 assert(rad3.transforms[1].kind === 'move' && rad3.transforms[1].x === -200, '7: t1.x=-200');
 
 const userScript2 = `# PC Case Configuration
-frame (w=540 d=340 h=400 l=170) {
+frame (w=540 d=340 h=400) {
  bottomEdge (x=-40)
  bottomEdge (x=100)
   bottomEdge (x=-100)
+ frontEdge(z=170)
+ backEdge(z=170)
+ leftEdge(z=170)
+ rightEdge(z=170)
 }
 move(114 30 20.8) motherboard()
 move(-120 0 270) gpu (n=5 s=55)
@@ -117,7 +123,9 @@ console.log('=== User script #2 ===');
 {
   const cfg = parseScript(userScript2);
   assert(cfg.frame.w === 540 && cfg.frame.d === 340 && cfg.frame.h === 400, 'frame 540/340/400');
-  assert(JSON.stringify(cfg.frame.levels) === '[170]', 'levels=[170]');
+  assert(cfg.frame.edges.length === 4, `edges=4 (got ${cfg.frame.edges.length})`);
+  assert(JSON.stringify(cfg.frame.edges.map(e => e.side)) === '["front","back","left","right"]', 'edge sides order');
+  assert(cfg.frame.edges.every(e => e.z === 170), 'all edges z=170');
   assert(JSON.stringify(cfg.frame.bottomBeams) === '[-40,100,-100]', 'bottomBeams=[-40,100,-100]');
   assert(cfg.components.length === 7, `total=7 (got ${cfg.components.length})`);
 
@@ -155,6 +163,47 @@ function assertThrows(fn: () => void, msg: string) {
   catch (e) { console.log('  OK', msg); pass++; }
 }
 
+console.log('=== Edge beams ===');
+{
+  const cfg = parseScript(`frame(w=540 d=340 h=400)\nfrontEdge(z=170 x=-50 y=10 l=300)\nbackEdge(z=200)\nleftEdge(z=100)\nrightEdge(z=120)`);
+  assert(cfg.frame.edges.length === 4, '4 edges parsed');
+  const [f, b, le, r] = cfg.frame.edges;
+  assert(f.side === 'front' && f.x === -50 && f.y === 10 && f.z === 170 && f.length === 300, 'frontEdge custom params');
+  assert(b.side === 'back' && b.x === 0 && b.y === 0 && b.z === 200 && b.length === null, 'backEdge defaults (full span)');
+  assert(le.side === 'left' && le.z === 100, 'leftEdge z=100');
+  assert(r.side === 'right' && r.z === 120, 'rightEdge z=120');
+
+  // Геометрия: p=20, w=540 → bw=500; d=340 → bd=300; front wall y=-160, back +160, left x=-260, right +260
+  const beams = resolveFrameBeams(540, 340, 400, [90], cfg.frame.edges);
+  assert(beams.length === 8 + 1 + 4, `beam count=13 (got ${beams.length})`); // 2 слоя x4 + bottomBeam + 4 edges
+  const bf = beams.find(bm => bm.z === 170 && bm.sx === 300)!;   // frontEdge с l=300
+  assert(!!bf, 'frontEdge beam found');
+  if (bf) {
+    assert(Math.abs(bf.y - (-160 + 10)) < 1e-9 && Math.abs(bf.x - (-50)) < 1e-9, `frontEdge pos x=-50 y=${bf.y} (wall+10)`);
+  }
+  const bb = beams.find(bm => bm.z === 200 && bm.sx === 500)!;   // backEdge полный пролёт у задней стенки
+  assert(!!bb, 'backEdge beam found');
+  if (bb) assert(Math.abs(bb.y - 160) < 1e-9 && bb.sy === 20, `backEdge at y=${bb.y} full span`);
+  const bl = beams.find(bm => bm.z === 100 && bm.sx === 20)!;    // leftEdge вдоль Y у левой стенки
+  assert(!!bl, 'leftEdge beam found');
+  if (bl) assert(Math.abs(bl.x - (-260)) < 1e-9 && bl.sy === 300, `leftEdge at x=${bl.x} full depth`);
+  const br = beams.find(bm => bm.z === 120 && bm.sx === 20)!;    // rightEdge вдоль Y у правой стенки
+  assert(!!br, 'rightEdge beam found');
+  if (br) assert(Math.abs(br.x - 260) < 1e-9 && br.sy === 300, `rightEdge at x=${br.x} full depth`);
+
+  // BOM: стойки 4x400Z; слои 2x(2x500X+2x300Y); edges: 300X + 500X + 2x300Y (bottomBeams в cfg пустые)
+  const cuts = computeProfileCuts(cfg.frame);
+  assert(cuts.length === 4 + 8 + 4, `cut count=16 (got ${cuts.length})`);
+  const sumX = cuts.filter(c => c.axis === 'X').reduce((s, c) => s + c.length * 1, 0);
+  assert(sumX === 4 * 500 + 300 + 500, `sum X lengths=${sumX}`);
+  const sumY = cuts.filter(c => c.axis === 'Y').reduce((s, c) => s + c.length * 1, 0);
+  assert(sumY === 4 * 300 + 2 * 300, `sum Y lengths=${sumY}`);
+
+  // l= в frame() больше не поддерживается; z у edges обязателен
+  assertThrows(() => parseScript('frame(w=530 d=330 h=350 l=140)'), 'l= in frame -> error');
+  assertThrows(() => parseScript('frame(w=530 d=330 h=350)\nfrontEdge(x=1)'), 'edge without z -> error');
+}
+
 console.log('=== Parity with csg_pc_editor ===');
 {
   const cfg2 = parseScript(`frame(w=530 d=330 h=350 b=200)\nbottomEdge(x=-46)`);
@@ -165,7 +214,7 @@ console.log('=== Parity with csg_pc_editor ===');
   assert(JSON.stringify(cfg3.frame.bottomBeams) === '[-77]', 'bottomEdge inside transform block kept');
 }
 assertThrows(() => parseScript(`frame(w=530 d=330 h=350)\nmove(1 2 3) {\n frame(w=1 d=1 h=1)\n motherboard()\n}`), 'frame inside block -> error');
-assertThrows(() => parseScript('frame(w=530 d=330 h=350 l=140,)'), 'unknown character -> error');
+assertThrows(() => parseScript('frame(w=530 d=330 h=350 b=140,)'), 'unknown character -> error');
 assertThrows(() => parseScript(`frame(w=530 d=330 h=350)\nmove( x = ) motherboard()`), "missing value after '=' -> error");
 
 console.log(`\n${pass} OK, ${fail} FAIL`);

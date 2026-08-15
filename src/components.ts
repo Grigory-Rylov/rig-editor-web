@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { CSG } from 'three-csg-ts';
+import type { EdgeBeam } from './dsl';
 
 const PROFILE = 20;
 const ID = new THREE.Matrix4();
@@ -24,6 +25,37 @@ function csgSubtract(base: THREE.BufferGeometry, sub: THREE.BufferGeometry): THR
 }
 
 // ---- Frame ----
+export interface BeamBox { x: number; y: number; z: number; sx: number; sy: number; sz: number; }
+
+// Полный список балок рамки (чистая функция — используется и для сборки, и для тестов):
+// нижний/верхний слои + bottomBeams (вдоль Y снизу) + edges (front/back — вдоль X у стенок, left/right — вдоль Y)
+export function resolveFrameBeams(w: number, d: number, h: number, bottomBeams: number[], edges: EdgeBeam[]): BeamBox[] {
+  const p = PROFILE, hw = w / 2, hd = d / 2;
+  const bw = w - 2 * p, bd = d - 2 * p;
+  const beams: BeamBox[] = [];
+
+  for (const z of [p / 2, h - p / 2]) {
+    beams.push({ x: 0, y: -hd + p / 2, z, sx: bw, sy: p, sz: p }); // передняя стенка
+    beams.push({ x: 0, y: hd - p / 2, z, sx: bw, sy: p, sz: p });  // задняя стенка
+    beams.push({ x: -hw + p / 2, y: 0, z, sx: p, sy: bd, sz: p }); // левая
+    beams.push({ x: hw - p / 2, y: 0, z, sx: p, sy: bd, sz: p });  // правая
+  }
+
+  for (const bx of bottomBeams) beams.push({ x: bx, y: 0, z: p / 2, sx: p, sy: bd, sz: p });
+
+  for (const e of edges) {
+    if (e.side === 'front' || e.side === 'back') {
+      const wallY = (e.side === 'front' ? -hd + p / 2 : hd - p / 2) + e.y;
+      beams.push({ x: e.x, y: wallY, z: e.z, sx: e.length ?? bw, sy: p, sz: p });
+    } else {
+      const wallX = e.side === 'right' ? hw - p / 2 : -hw + p / 2;
+      beams.push({ x: wallX, y: 0, z: e.z, sx: p, sy: bd, sz: p });
+    }
+  }
+
+  return beams;
+}
+
 export function buildFrameVertical(w: number, d: number, h: number): THREE.BufferGeometry {
   const hw = w / 2, hd = d / 2, hh = h / 2;
   return csgUnion([
@@ -35,25 +67,10 @@ export function buildFrameVertical(w: number, d: number, h: number): THREE.Buffe
 }
 
 export function buildFrameHorizontal(
-  w: number, d: number, h: number, levels: number[], bottomBeams: number[]
+  w: number, d: number, h: number, bottomBeams: number[], edges: EdgeBeam[]
 ): THREE.BufferGeometry {
-  const p = PROFILE, hw = w / 2, hd = d / 2;
-  const bw = w - 2 * p, bd = d - 2 * p;
-  const beams: THREE.BufferGeometry[] = [];
-
-  const layer = (z: number) => {
-    beams.push(cube(bw, p, p).translate(0, -hd + p / 2, z));
-    beams.push(cube(bw, p, p).translate(0, hd - p / 2, z));
-    beams.push(cube(p, bd, p).translate(-hw + p / 2, 0, z));
-    beams.push(cube(p, bd, p).translate(hw - p / 2, 0, z));
-  };
-
-  layer(p / 2);
-  layer(h - p / 2);
-  for (const z of levels) layer(z);
-  for (const bx of bottomBeams) beams.push(cube(p, bd, p).translate(bx, 0, p / 2));
-
-  return csgUnion(beams);
+  const geos = resolveFrameBeams(w, d, h, bottomBeams, edges).map(b => cube(b.sx, b.sy, b.sz).translate(b.x, b.y, b.z));
+  return csgUnion(geos);
 }
 
 // ---- Motherboard ----

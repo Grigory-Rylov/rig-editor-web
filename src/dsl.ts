@@ -3,7 +3,13 @@ export interface Vec3 { x: number; y: number; z: number; }
 export type ComponentName = 'motherboard' | 'gpu' | 'psu' | 'cooler' | 'radiator';
 export const COMPONENT_SET = new Set<ComponentName>(['motherboard', 'gpu', 'psu', 'cooler', 'radiator']);
 
-export interface FrameConfig { w: number; d: number; h: number; levels: number[]; bottomBeams: number[]; }
+export type EdgeSide = 'front' | 'back' | 'left' | 'right';
+
+// Промежуточная балка рамки: front/back — вдоль X у передней/задней стенки,
+// left/right — вдоль Y у левой/правой. x/y — смещения от центра/стенки, z — высота, length — длина (null = весь пролёт)
+export interface EdgeBeam { side: EdgeSide; x: number; y: number; z: number; length: number | null; }
+
+export interface FrameConfig { w: number; d: number; h: number; bottomBeams: number[]; edges: EdgeBeam[]; }
 
 export type TransformOp =
   | { kind: 'move'; x: number; y: number; z: number }
@@ -51,11 +57,14 @@ function tokenize(input: string): Tok[] {
 }
 
 // ---- AST ----
-interface FrameDecl { kind: 'FrameDecl'; w: number; d: number; h: number; levels: number[]; bottomBeams: number[] }
+interface FrameDecl { kind: 'FrameDecl'; w: number; d: number; h: number; bottomBeams: number[]; edges: EdgeBeam[] }
 interface BottomEdge { kind: 'BottomEdge'; x: number }
+interface EdgeDecl { kind: 'EdgeDecl'; beam: EdgeBeam }
 interface ComponentStmt { kind: 'ComponentStmt'; transforms: TransformOp[]; name: ComponentName; count: number; spacing: number }
 interface BlockStmt { kind: 'BlockStmt'; transforms: TransformOp[]; statements: AstNode[] }
-type AstNode = FrameDecl | BottomEdge | ComponentStmt | BlockStmt;
+type AstNode = FrameDecl | BottomEdge | EdgeDecl | ComponentStmt | BlockStmt;
+
+const EDGE_SIDES: Record<string, EdgeSide> = { frontEdge: 'front', backEdge: 'back', leftEdge: 'left', rightEdge: 'right' };
 
 // ---- Parser ----
 class Parser {
@@ -82,6 +91,7 @@ class Parser {
     const t = this.cur();
     if (t.kind === 'ID' && t.val === 'frame') return this.parseFrame();
     if (t.kind === 'ID' && t.val === 'bottomEdge') return this.parseBottomEdge();
+    if (t.kind === 'ID' && EDGE_SIDES[String(t.val)]) return this.parseEdge(String(t.val));
     return this.parseTransformChain();
   }
 
@@ -90,18 +100,21 @@ class Parser {
     this.expect('OP', '(');
     const params = this.namedParams();
     this.expect('OP', ')');
+    if (params['l'] != null) throw new Error("Параметр l= frame() больше не поддерживается — используйте frontEdge/backEdge/leftEdge/rightEdge");
     const bottomBeams: number[] = [...(paramList(params, 'b'))];
+    const edges: EdgeBeam[] = [];
 
     if (this.cur().kind === 'OP' && this.cur().val === '{') {
       this.expect('OP', '{');
       while (this.cur().val !== '}' && this.i < this.toks.length) {
         const s = this.stmt();
         if (s.kind === 'BottomEdge') bottomBeams.push(s.x);
+        else if (s.kind === 'EdgeDecl') edges.push(s.beam);
       }
       this.expect('OP', '}');
     }
 
-    return { kind: 'FrameDecl', w: paramReq(params, 'w'), d: paramReq(params, 'd'), h: paramReq(params, 'h'), levels: paramList(params, 'l'), bottomBeams };
+    return { kind: 'FrameDecl', w: paramReq(params, 'w'), d: paramReq(params, 'd'), h: paramReq(params, 'h'), bottomBeams, edges };
   }
 
   parseBottomEdge(): BottomEdge {
@@ -110,6 +123,16 @@ class Parser {
     const p = this.namedParams();
     this.expect('OP', ')');
     return { kind: 'BottomEdge', x: paramReq(p, 'x') };
+  }
+
+  // frontEdge/backEdge — балка вдоль X у передней/задней стенки (y — смещение от стенки),
+  // leftEdge/rightEdge — балка вдоль Y у левой/правой. z обязательна; l — длина (по умолчанию весь пролёт)
+  parseEdge(name: string): EdgeDecl {
+    this.expect('ID', name);
+    this.expect('OP', '(');
+    const p = this.namedParams();
+    this.expect('OP', ')');
+    return { kind: 'EdgeDecl', beam: { side: EDGE_SIDES[name], x: paramOptN(p, 'x', 0), y: paramOptN(p, 'y', 0), z: paramReq(p, 'z'), length: p['l'] != null ? parseFloat(p['l']) : null } };
   }
 
   parseTransformChain(): AstNode {
@@ -182,34 +205,39 @@ export function parseScript(text: string): SceneConfig {
   let frame: FrameConfig | null = null;
   const components: ComponentPlacement[] = [];
   const externalBottomEdges: number[] = [];
+  const externalEdges: EdgeBeam[] = [];
 
   for (const s of stmts) {
     if (s.kind === 'FrameDecl') {
       if (frame) throw new Error('Дублирующее объявление frame');
-      frame = { w: s.w, d: s.d, h: s.h, levels: [...s.levels], bottomBeams: [...s.bottomBeams] };
+      frame = { w: s.w, d: s.d, h: s.h, bottomBeams: [...s.bottomBeams], edges: [...s.edges] };
     } else if (s.kind === 'BottomEdge') {
       externalBottomEdges.push(s.x);
+    } else if (s.kind === 'EdgeDecl') {
+      externalEdges.push(s.beam);
     } else if (s.kind === 'ComponentStmt') {
       components.push({ type: s.name, count: s.count, spacing: s.spacing, transforms: s.transforms });
     } else if (s.kind === 'BlockStmt') {
-      flattenBlock(s, [], components, externalBottomEdges);
+      flattenBlock(s, [], components, externalBottomEdges, externalEdges);
     }
   }
 
   if (!frame) throw new Error('Не найдено объявление frame');
   const bottomBeams = [...frame.bottomBeams, ...externalBottomEdges];
-  return { frame: { ...frame, bottomBeams }, components };
+  const edges = [...frame.edges, ...externalEdges];
+  return { frame: { ...frame, bottomBeams, edges }, components };
 }
 
-function flattenBlock(b: BlockStmt, outer: TransformOp[], result: ComponentPlacement[], edges: number[]) {
+function flattenBlock(b: BlockStmt, outer: TransformOp[], result: ComponentPlacement[], bottomEdges: number[], edgeDecls: EdgeBeam[]) {
   const combined = [...outer, ...b.transforms];
   for (const s of b.statements) {
     if (s.kind === 'FrameDecl') throw new Error('frame нельзя объявлять внутри блока');
-    if (s.kind === 'BottomEdge') edges.push(s.x);
+    if (s.kind === 'BottomEdge') bottomEdges.push(s.x);
+    else if (s.kind === 'EdgeDecl') edgeDecls.push(s.beam);
     else if (s.kind === 'ComponentStmt') {
       result.push({ type: s.name, count: s.count, spacing: s.spacing, transforms: [...combined, ...s.transforms] });
     } else if (s.kind === 'BlockStmt') {
-      flattenBlock(s, combined, result, edges);
+      flattenBlock(s, combined, result, bottomEdges, edgeDecls);
     }
   }
 }
@@ -219,9 +247,16 @@ export function formatScene(cfg: SceneConfig): string {
   const lines: string[] = [];
   const f = cfg.frame;
   const parts = [`w=${f.w}`, `d=${f.d}`, `h=${f.h}`];
-  if (f.levels.length) parts.push(`l=${f.levels.join(' ')}`);
   if (f.bottomBeams.length) parts.push(`b=${f.bottomBeams.join(' ')}`);
   lines.push(`frame(${parts.join(' ')})`);
+
+  for (const e of f.edges) {
+    const ep: string[] = [`z=${e.z}`];
+    if (e.x !== 0) ep.push(`x=${e.x}`);
+    if (e.y !== 0) ep.push(`y=${e.y}`);
+    if (e.length != null) ep.push(`l=${e.length}`);
+    lines.push(`${e.side}Edge(${ep.join(' ')})`);
+  }
 
   for (const c of cfg.components) {
     let line = '';
@@ -240,10 +275,10 @@ export function formatScene(cfg: SceneConfig): string {
   return lines.join('\n');
 }
 
-export const DEFAULT_FRAME = { w: 530, d: 330, h: 350, levels: [140] as number[] };
+export const DEFAULT_FRAME = { w: 530, d: 330, h: 350 };
 
 export const DEFAULT_SCRIPT = `# Конфигурация корпуса ПК
-frame(w=530 d=330 h=350 l=140)
+frame(w=530 d=330 h=350)
 move(90 0 20.8) motherboard()
 move(0 0 100) gpu(n=5 s=55)
 move(-240 95 0) rotate(90 0 0) psu()

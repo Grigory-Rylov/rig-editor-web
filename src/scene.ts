@@ -45,7 +45,7 @@ export function buildFrameMeshes(config: SceneConfig): THREE.Mesh[] {
   meshes.push(new THREE.Mesh(fv, new THREE.MeshStandardMaterial(MAT)));
 
   const fh = colorize(
-    buildFrameHorizontal(config.frame.w, config.frame.d, config.frame.h, config.frame.levels, config.frame.bottomBeams),
+    buildFrameHorizontal(config.frame.w, config.frame.d, config.frame.h, config.frame.bottomBeams, config.frame.edges),
     COLORS.frameHoriz
   );
   meshes.push(new THREE.Mesh(fh, new THREE.MeshStandardMaterial(MAT)));
