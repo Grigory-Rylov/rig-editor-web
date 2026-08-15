@@ -89,7 +89,7 @@ function saveScript(script: string) {
 }
 
 // Ключевой свет идёт со стороны камеры и чуть выше неё — как будто светит в лицо сцене
-const keyLight = new THREE.DirectionalLight(0xffffff, 1.15);
+const keyLight = new THREE.DirectionalLight(0xffffff, 2.4);
 scene.add(keyLight);
 const LIGHT_ABOVE_CAMERA = new THREE.Vector3(0, 0, 350); // +Z — вертикаль сцены
 
@@ -98,7 +98,7 @@ function syncLightToCamera() {
 }
 
 // ---- Init ----
-scene.add(new THREE.AmbientLight(0xffffff, 0.45));
+scene.add(new THREE.AmbientLight(0xffffff, 0.7));
 syncLightToCamera();
 editor.value = loadSavedScript();
 updateHighlight();
