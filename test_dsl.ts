@@ -167,7 +167,7 @@ console.log('=== Default script ===');
 {
   const cfg = parseScript(DEFAULT_SCRIPT);
   assert(cfg.frame.w === 540 && cfg.frame.d === 340 && cfg.frame.h === 400, 'default frame 540/340/400');
-  assert(JSON.stringify(cfg.frame.bottomBeams) === '[-40,100,-100]', 'default bottomBeams');
+  assert(JSON.stringify(cfg.frame.bottomBeams) === '[-30,100,-115]', 'default bottomBeams');
   assert(cfg.frame.edges.length === 4, `default edges=4 (got ${cfg.frame.edges.length})`);
   const fe = cfg.frame.edges.find(e => e.side === 'front')!;
   assert(fe && fe.y === 60 && fe.z === 200 && fe.length === null, 'frontEdge(y=60 z=200) full span');

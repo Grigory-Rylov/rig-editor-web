@@ -280,9 +280,9 @@ export const DEFAULT_FRAME = { w: 540, d: 340, h: 400 };
 export const DEFAULT_SCRIPT = `# Корпус
 frame (w=540 d=340 h=400) {
   # Нижние ребра
-  bottomEdge (x=-40)
+  bottomEdge (x=-30)
   bottomEdge (x=100)
-  bottomEdge (x=-100)
+  bottomEdge (x=-115)
   # Передняя штанга под видеокарты
   frontEdge(y = 60 z=200)
   # Задняя штанга под видеокарты
@@ -297,7 +297,7 @@ move(114 30 20.8) motherboard()
 # Видеокарты
 move(-120 0 270) gpu (n=5 s=55)
 # БП
-move(x=-170 z=80) {
+move(x=-190 z=65) {
   move(y=75) rotate(90 0 0) psu()
   move(y=-75) rotate(90 0 0) psu()
 }
