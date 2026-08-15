@@ -4,6 +4,8 @@
 (материнская плата, GPU, БП, кулер, радиаторы). Конфигурация задаётся текстовым DSL
 — синтаксис совместим с парсером проекта `csg_pc_editor` (Android/desktop).
 
+![Скриншот приложения](docs/screenshot.jpg)
+
 ## Запуск
 
 Требования: Node.js 18+.
@@ -155,5 +157,6 @@ src/profiles.ts   расчёт нарезки профиля и специфик
 src/components.ts геометрия рамки и компонентов (CSG via three-csg-ts)
 src/scene.ts      сборка мешей сцены из SceneConfig
 public/textures/  текстуры материнской платы (из csg_pc_editor)
+docs/screenshot.jpg скриншот приложения (в этом README)
 test_dsl.ts       тесты парсера (npx tsx test_dsl.ts)
 ```
