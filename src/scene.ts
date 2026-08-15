@@ -5,14 +5,15 @@ import {
   buildMotherboard, buildGpu, buildPsu, buildCooler, buildRadiator,
 } from './components';
 
+// Цвета 1-в-1 с Android-приложением (PcCaseModelFactory.kt)
 const COLORS: Record<string, THREE.Color> = {
-  motherboard: new THREE.Color(0, 200 / 255, 0),
-  gpu: new THREE.Color(200 / 255, 30 / 255, 30 / 255),
-  psu: new THREE.Color(60 / 255, 60 / 255, 60 / 255),
-  cooler: new THREE.Color(180 / 255, 180 / 255, 180 / 255),
-  radiator: new THREE.Color(50 / 255, 50 / 255, 55 / 255),
-  frameVert: new THREE.Color(100 / 255, 140 / 255, 200 / 255),
-  frameHoriz: new THREE.Color(128 / 255, 128 / 255, 128 / 255),
+  motherboard: new THREE.Color(0 / 255, 255 / 255, 0 / 255),   // Color.GREEN
+  gpu: new THREE.Color(200 / 255, 30 / 255, 30 / 255),        // (200, 30, 30)
+  psu: new THREE.Color(60 / 255, 60 / 255, 60 / 255),         // (60, 60, 60)
+  cooler: new THREE.Color(180 / 255, 180 / 255, 180 / 255),   // (180, 180, 180)
+  radiator: new THREE.Color(50 / 255, 50 / 255, 55 / 255),    // (50, 50, 55)
+  frameVert: new THREE.Color(100 / 255, 140 / 255, 200 / 255),// (100, 140, 200)
+  frameHoriz: new THREE.Color(128 / 255, 128 / 255, 128 / 255), // GRAY
 };
 
 export interface MovableComponent {
@@ -21,7 +22,8 @@ export interface MovableComponent {
   baseGeo: THREE.BufferGeometry;
 }
 
-const MAT = { vertexColors: true, side: THREE.DoubleSide as THREE.Side };
+// flatShading — плоские сочные грани, как в GL-рендерере Android-приложения
+const MAT = { vertexColors: true, side: THREE.DoubleSide as THREE.Side, flatShading: true };
 
 function colorize(geo: THREE.BufferGeometry, color: THREE.Color): THREE.BufferGeometry {
   const count = geo.getAttribute('position').count;

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { parseScript, DEFAULT_SCRIPT, DEFAULT_FRAME, SceneConfig } from './dsl';
+import { parseScript, DEFAULT_SCRIPT, SceneConfig } from './dsl';
 import { buildFrameMeshes, buildComponentMeshes } from './scene';
 import { generateReport } from './profiles';
 
@@ -18,7 +18,7 @@ renderer.setPixelRatio(window.devicePixelRatio);
 container.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x2b2b3d);
+scene.background = new THREE.Color(0x404040); // как в Android-приложении (glClearColor 0.25,0.25,0.25)
 
 const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 10000);
 camera.up.set(0, 0, 1);
@@ -31,7 +31,6 @@ controls.dampingFactor = 0.08;
 // ---- State ----
 let currentConfig: SceneConfig | null = null;
 let sceneObjects: THREE.Object3D[] = [];
-let gridHelper: THREE.GridHelper | null = null;
 
 // ---- Pan (Ctrl+Drag) ----
 const panStart = new THREE.Vector2();
@@ -74,11 +73,21 @@ editor.addEventListener('scroll', () => {
   hlLayer.scrollLeft = editor.scrollLeft;
 });
 
+const STORAGE_KEY = 'pc_case_script';
+
+function loadSavedScript(): string {
+  try { return localStorage.getItem(STORAGE_KEY) || DEFAULT_SCRIPT; } catch { return DEFAULT_SCRIPT; }
+}
+function saveScript(script: string) {
+  try { localStorage.setItem(STORAGE_KEY, script); } catch { /* приватный режим — просто не сохраняем */ }
+}
+
 // ---- Init ----
-setupLights();
-editor.value = DEFAULT_SCRIPT;
+scene.add(new THREE.AmbientLight(0xffffff, 0.45));
+syncLightToCamera();
+editor.value = loadSavedScript();
 updateHighlight();
-loadScene(DEFAULT_SCRIPT);
+loadScene(editor.value);
 
 window.addEventListener('resize', resize);
 resize();
@@ -90,14 +99,13 @@ function resize() {
   renderer.setSize(r.width, r.height);
 }
 
-function setupLights() {
-  scene.add(new THREE.AmbientLight(0xffffff, 0.4));
-  const d1 = new THREE.DirectionalLight(0xffffff, 0.7);
-  d1.position.set(300, 400, 500);
-  scene.add(d1);
-  const d2 = new THREE.DirectionalLight(0xffffff, 0.3);
-  d2.position.set(-300, -200, 300);
-  scene.add(d2);
+// Ключевой свет идёт со стороны камеры и чуть выше неё — как будто светит в лицо сцене
+const keyLight = new THREE.DirectionalLight(0xffffff, 1.15);
+scene.add(keyLight);
+const LIGHT_ABOVE_CAMERA = new THREE.Vector3(0, 0, 350); // +Z — вертикаль сцены
+
+function syncLightToCamera() {
+  keyLight.position.copy(camera.position).add(LIGHT_ABOVE_CAMERA);
 }
 
 // ---- Scene Building ----
@@ -119,12 +127,7 @@ function loadScene(script: string) {
 
     const config = parseScript(script);
     currentConfig = config;
-
-    if (gridHelper) scene.remove(gridHelper);
-    gridHelper = new THREE.GridHelper(1200, 24, 0x444466, 0x333355);
-    gridHelper.position.set(0, 0, config.frame.h / 2);
-    scene.add(gridHelper);
-    sceneObjects.push(gridHelper);
+    saveScript(script); // последнее успешно применённое — переживёт перезапуск сервиса
 
     const frameMeshes = buildFrameMeshes(config);
     for (const m of frameMeshes) { scene.add(m); sceneObjects.push(m); }
@@ -146,18 +149,12 @@ editor.addEventListener('keydown', (e) => {
   if (e.ctrlKey && e.key === 'Enter') { e.preventDefault(); loadScene(editor.value); }
 });
 
+// Сброс: дефолтный скрипт + очищаем сохранённое (после перезапуска снова будет он)
 btnResetFrame.addEventListener('click', () => {
-  const m = editor.value.match(/frame\s*\([^)]*(?:\s*\{[^}]*\})?/);
-  if (!m) {
-    errorBox.textContent = 'В скрипте не найдено объявление frame';
-    errorBox.style.display = 'block';
-    return;
-  }
-  const f = DEFAULT_FRAME;
-  const line = `frame(w=${f.w} d=${f.d} h=${f.h})`;
-  editor.value = editor.value.replace(m[0], line);
+  try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+  editor.value = DEFAULT_SCRIPT;
   updateHighlight();
-  loadScene(editor.value);
+  loadScene(DEFAULT_SCRIPT);
 });
 
 // ---- Report ----
@@ -222,5 +219,5 @@ window.addEventListener('keydown', (e) => {
 });
 
 // ---- Loop ----
-function animate() { requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); }
+function animate() { requestAnimationFrame(animate); controls.update(); syncLightToCamera(); renderer.render(scene, camera); }
 animate();

@@ -1,4 +1,4 @@
-import { parseScript } from './src/dsl';
+import { parseScript, DEFAULT_SCRIPT } from './src/dsl';
 import { resolveFrameBeams } from './src/components';
 import { computeProfileCuts } from './src/profiles';
 
@@ -161,6 +161,21 @@ console.log('=== User script #2 ===');
 function assertThrows(fn: () => void, msg: string) {
   try { fn(); console.error('  FAIL', msg, '(no throw)'); fail++; }
   catch (e) { console.log('  OK', msg); pass++; }
+}
+
+console.log('=== Default script ===');
+{
+  const cfg = parseScript(DEFAULT_SCRIPT);
+  assert(cfg.frame.w === 540 && cfg.frame.d === 340 && cfg.frame.h === 400, 'default frame 540/340/400');
+  assert(JSON.stringify(cfg.frame.bottomBeams) === '[-40,100,-100]', 'default bottomBeams');
+  assert(cfg.frame.edges.length === 4, `default edges=4 (got ${cfg.frame.edges.length})`);
+  const fe = cfg.frame.edges.find(e => e.side === 'front')!;
+  assert(fe && fe.y === 60 && fe.z === 200 && fe.length === null, 'frontEdge(y=60 z=200) full span');
+  const be = cfg.frame.edges.find(e => e.side === 'back')!;
+  assert(be && be.z === 310, 'backEdge(z=310)');
+  assert(cfg.components.length === 8, `default components=8 (got ${cfg.components.length})`);
+  const rads = cfg.components.filter(c => c.type === 'radiator');
+  assert(rads.length === 3 && rads.every(r => (r.transforms[0] as any).z === 420), '3 radiators inherit z=420');
 }
 
 console.log('=== Edge beams ===');

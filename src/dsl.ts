@@ -275,13 +275,35 @@ export function formatScene(cfg: SceneConfig): string {
   return lines.join('\n');
 }
 
-export const DEFAULT_FRAME = { w: 530, d: 330, h: 350 };
+export const DEFAULT_FRAME = { w: 540, d: 340, h: 400 };
 
-export const DEFAULT_SCRIPT = `# Конфигурация корпуса ПК
-frame(w=530 d=330 h=350)
-move(90 0 20.8) motherboard()
-move(0 0 100) gpu(n=5 s=55)
-move(-240 95 0) rotate(90 0 0) psu()
-move(-240 -95 0) rotate(90 0 0) psu()
+export const DEFAULT_SCRIPT = `# Корпус
+frame (w=540 d=340 h=400) {
+  # Нижние ребра
+  bottomEdge (x=-40)
+  bottomEdge (x=100)
+  bottomEdge (x=-100)
+  # Передняя штанга под видеокарты
+  frontEdge(y = 60 z=200)
+  # Задняя штанга под видеокарты
+  backEdge(z=310)
+  # Боковые промежуточные штанги
+  rightEdge(z=200)
+  leftEdge(z=200)
+}
+
+# Матплата
+move(114 30 20.8) motherboard()
+# Видеокарты
+move(-120 0 270) gpu (n=5 s=55)
+# БП
+move(x=-170 z=80) {
+  move(y=75) rotate(90 0 0) psu()
+  move(y=-75) rotate(90 0 0) psu()
+}
 move(150 35 105) cooler()
-move(0 0 363.5) rotate(0 0 90) radiator()`;
+move(0 0 420) {
+  radiator()
+  move(x=200) radiator ()
+  move(x=-200) radiator ()
+}`;
