@@ -4,6 +4,8 @@
 (материнская плата, GPU, БП, кулер, радиаторы). Конфигурация задаётся текстовым DSL
 — синтаксис совместим с парсером проекта `csg_pc_editor` (Android/desktop).
 
+**🌐 Живая версия (GitHub Pages, без установки): <https://grigory-rylov.github.io/rig-editor-web/>**
+
 ![Скриншот приложения](docs/screenshot.jpg)
 
 ## Запуск
